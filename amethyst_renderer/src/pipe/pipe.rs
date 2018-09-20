@@ -211,7 +211,7 @@ pub trait PipelineBuild {
     type Pipeline: PolyPipeline;
 
     /// Build pipeline
-    fn build(self, renderer: &mut Renderer, out: &Target, multisampling: u16) -> Result<Self::Pipeline>;
+    fn build(self, renderer: &mut Renderer) -> Result<Self::Pipeline>;
 }
 
 impl<L, Z, R, Q> PipelineBuild for PipelineBuilder<Q>
@@ -222,11 +222,11 @@ where
     R: PolyStages,
 {
     type Pipeline = Pipeline<R>;
-    fn build(mut self, renderer: &mut Renderer, out: &Target, multisampling: u16) -> Result<Pipeline<R>> {
+    fn build(mut self, renderer: &mut Renderer) -> Result<Pipeline<R>> {
         let mut targets = self
             .targets
             .drain(..)
-            .map(|tb| tb.build(&mut renderer.factory, out.size()))
+            .map(|tb| tb.build(&mut renderer.factory, renderer.out.size()))
             .collect::<Result<Targets>>()?;
 
         targets.insert("".into(), out.clone());
@@ -234,7 +234,7 @@ where
         let stages = self
             .stages
             .into_list()
-            .fmap(BuildStage::new(renderer, &targets, multisampling))
+            .fmap(BuildStage::new(renderer, &targets, renderer.multisampling))
             .try()?;
 
         Ok(Pipeline { stages, targets })
