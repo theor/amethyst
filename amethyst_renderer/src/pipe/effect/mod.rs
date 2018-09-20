@@ -28,6 +28,31 @@ pub enum DepthMode {
     LessEqualWrite,
 }
 
+use amethyst_core::specs::DenseVecStorage;
+use amethyst_assets::{Asset, Handle};
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum ProgramType {
+    VertexShader,
+    PixelShader,
+    GeometryShader,
+    DomainShader,
+    HullShader,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(crate) struct Program {
+    program_type: ProgramType,
+}
+
+type ProgramHandle = Handle<Program>;
+
+impl Asset for Program {
+    const NAME: &'static str = "renderer::Program";
+    type Data = Box<[u8]>;
+    type HandleStorage = DenseVecStorage<ProgramHandle>;
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub(crate) enum ProgramSource<'a> {
     Simple(&'a [u8], &'a [u8]),
