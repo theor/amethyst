@@ -4,6 +4,7 @@ use amethyst_core::specs::prelude::SystemData;
 use error::Result;
 use pipe::{Effect, NewEffect, Target};
 use types::{Encoder, Factory};
+use super::super::Renderer;
 
 /// Used to fetch data from the game world for rendering in the pass.
 pub trait PassData<'a> {
@@ -41,11 +42,11 @@ where
 {
     pub(super) fn compile(
         mut pass: P,
-        fac: &mut Factory,
+        renderer: &mut Renderer,
         out: &Target,
         multisampling: u16,
     ) -> Result<Self> {
-        let effect = pass.compile(NewEffect::new(fac, out, multisampling))?;
+        let effect = pass.compile(NewEffect::new(renderer, out, multisampling))?;
         Ok(CompiledPass {
             effect,
             inner: pass,

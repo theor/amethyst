@@ -6,6 +6,7 @@ use error::{Error, Result};
 use fnv::FnvHashMap as HashMap;
 use hetseq::*;
 use types::{Encoder, Factory};
+use super::super::Renderer;
 
 /// Defines how the rendering pipeline should be configured.
 #[derive(Clone, Debug)]
@@ -210,7 +211,7 @@ pub trait PipelineBuild {
     type Pipeline: PolyPipeline;
 
     /// Build pipeline
-    fn build(self, fac: &mut Factory, out: &Target, multisampling: u16) -> Result<Self::Pipeline>;
+    fn build(self, renderer: &mut Renderer, out: &Target, multisampling: u16) -> Result<Self::Pipeline>;
 }
 
 impl<L, Z, R, Q> PipelineBuild for PipelineBuilder<Q>
@@ -221,11 +222,11 @@ where
     R: PolyStages,
 {
     type Pipeline = Pipeline<R>;
-    fn build(mut self, fac: &mut Factory, out: &Target, multisampling: u16) -> Result<Pipeline<R>> {
+    fn build(mut self, renderer: &mut Renderer, out: &Target, multisampling: u16) -> Result<Pipeline<R>> {
         let mut targets = self
             .targets
             .drain(..)
-            .map(|tb| tb.build(fac, out.size()))
+            .map(|tb| tb.build(&mut renderer.factory, out.size()))
             .collect::<Result<Targets>>()?;
 
         targets.insert("".into(), out.clone());
@@ -233,7 +234,7 @@ where
         let stages = self
             .stages
             .into_list()
-            .fmap(BuildStage::new(fac, &targets, multisampling))
+            .fmap(BuildStage::new(renderer, &targets, multisampling))
             .try()?;
 
         Ok(Pipeline { stages, targets })
@@ -241,15 +242,15 @@ where
 }
 
 pub struct BuildStage<'a> {
-    factory: &'a mut Factory,
+    renderer: &'a mut Renderer,
     targets: &'a Targets,
     multisampling: u16,
 }
 
 impl<'a, 'b> BuildStage<'a> {
-    fn new(factory: &'a mut Factory, targets: &'a Targets, multisampling: u16) -> Self {
+    fn new(renderer: &'a mut Renderer, targets: &'a Targets, multisampling: u16) -> Self {
         BuildStage {
-            factory,
+            renderer,
             targets,
             multisampling,
         }
@@ -265,7 +266,7 @@ where
 {
     type Output = Result<Stage<R>>;
     fn call_once(self, (stage,): (StageBuilder<Q>,)) -> Result<Stage<R>> {
-        stage.build(self.factory, self.targets, self.multisampling)
+        stage.build(self.renderer, self.targets, self.multisampling)
     }
 }
 
@@ -277,6 +278,6 @@ where
     R: Passes,
 {
     fn call_mut(&mut self, (stage,): (StageBuilder<Q>,)) -> Result<Stage<R>> {
-        stage.build(self.factory, self.targets, self.multisampling)
+        stage.build(self.renderer, self.targets, self.multisampling)
     }
 }

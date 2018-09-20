@@ -4,6 +4,7 @@
 pub use self::mesh::*;
 pub use self::mtl::*;
 pub use self::texture::*;
+pub use self::program::*;
 use amethyst_assets::{AssetPrefab, Format, PrefabData, PrefabError, ProgressCounter};
 use amethyst_core::specs::prelude::Entity;
 use serde::de::DeserializeOwned;
@@ -13,6 +14,7 @@ use {Mesh, ShapePrefab, Texture};
 
 mod mesh;
 mod mtl;
+mod program;
 mod texture;
 
 /// Internal mesh loading

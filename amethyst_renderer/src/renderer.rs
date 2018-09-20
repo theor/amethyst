@@ -63,7 +63,7 @@ impl Renderer {
         P: PolyPipeline,
         B: PipelineBuild<Pipeline = P>,
     {
-        pb.build(&mut self.factory, &self.main_target, self.multisampling)
+        pb.build(self)
     }
 
     /// Draws a scene with the given pipeline.

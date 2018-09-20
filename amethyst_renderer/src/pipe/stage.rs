@@ -7,6 +7,7 @@ use hetseq::*;
 use pipe::pass::{CompiledPass, Pass, PassData};
 use pipe::{Target, Targets};
 use types::{Encoder, Factory};
+use super::super::Renderer;
 
 /// A stage in the rendering pipeline.
 #[derive(Clone, Debug)]
@@ -224,7 +225,7 @@ impl<Q> StageBuilder<Q> {
 
     pub(crate) fn build<'a, L, Z, R>(
         self,
-        fac: &'a mut Factory,
+        renderer: &'a mut Renderer,
         targets: &'a Targets,
         multisampling: u16,
     ) -> Result<Stage<R>>
@@ -242,7 +243,7 @@ impl<Q> StageBuilder<Q> {
         let passes = self
             .passes
             .into_list()
-            .fmap(CompilePass::new(fac, &out, multisampling))
+            .fmap(CompilePass::new(renderer, &out, multisampling))
             .try()?;
 
         Ok(Stage {
@@ -256,9 +257,10 @@ impl<Q> StageBuilder<Q> {
     }
 }
 
-impl<Q> StageBuilder<Queue<Q>> {
+impl<'a, Q> StageBuilder<Queue<Q>> {
     /// Appends another `Pass` to the stage.
-    pub fn with_pass<P: Pass>(self, pass: P) -> StageBuilder<Queue<(Queue<Q>, P)>> {
+    pub fn with_pass<P: Pass>(self, pass: P,
+    renderer: & mut Renderer,) -> StageBuilder<Queue<(Queue<Q>, P)>> {
         StageBuilder {
             clear_color: self.clear_color,
             clear_depth: self.clear_depth,
@@ -270,15 +272,16 @@ impl<Q> StageBuilder<Queue<Q>> {
 }
 
 pub struct CompilePass<'a> {
-    factory: &'a mut Factory,
+    renderer: &'a mut Renderer,
     target: &'a Target,
     multisampling: u16,
 }
 
 impl<'a> CompilePass<'a> {
-    fn new(factory: &'a mut Factory, target: &'a Target, multisampling: u16) -> Self {
+    fn new(renderer: &'a mut Renderer, target: &'a Target, multisampling: u16, 
+        ) -> Self {
         CompilePass {
-            factory,
+            renderer,
             target,
             multisampling,
         }
@@ -291,7 +294,7 @@ where
 {
     type Output = Result<CompiledPass<P>>;
     fn call_once(self, (pass,): (P,)) -> Result<CompiledPass<P>> {
-        CompiledPass::compile(pass, self.factory, self.target, self.multisampling)
+        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling)
     }
 }
 impl<'a, P> HetFnMut<(P,)> for CompilePass<'a>
@@ -299,6 +302,6 @@ where
     P: Pass,
 {
     fn call_mut(&mut self, (pass,): (P,)) -> Result<CompiledPass<P>> {
-        CompiledPass::compile(pass, self.factory, self.target, self.multisampling)
+        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling)
     }
 }

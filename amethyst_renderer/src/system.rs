@@ -9,10 +9,11 @@ use amethyst_core::specs::prelude::{
 use amethyst_core::Time;
 use config::DisplayConfig;
 use error::Result;
-use formats::{create_mesh_asset, create_texture_asset};
+use formats::{create_mesh_asset, create_shader_asset, create_texture_asset};
 use mesh::Mesh;
 use mtl::{Material, MaterialDefaults};
 use pipe::{PipelineBuild, PipelineData, PolyPipeline};
+use pipe::{Program, ProgramData};
 use rayon::ThreadPool;
 use renderer::Renderer;
 use resources::{ScreenDimensions, WindowMessages};
@@ -20,6 +21,8 @@ use std::mem;
 use std::sync::Arc;
 use tex::Texture;
 use winit::{DeviceEvent, Event, WindowEvent};
+
+use amethyst_assets::ProcessingState;
 
 /// Rendering system.
 #[derive(Derivative)]
@@ -76,7 +79,7 @@ where
 
     fn asset_loading(
         &mut self,
-        (time, pool, strategy, mut mesh_storage, mut texture_storage): AssetLoadingData,
+        (time, pool, strategy, mut mesh_storage, mut texture_storage, mut shader_storage): AssetLoadingData,
     ) {
         use std::ops::Deref;
 
@@ -95,6 +98,13 @@ where
             &**pool,
             strategy,
         );
+
+        shader_storage.process(
+            |d| create_shader_asset(d, &mut self.renderer),
+            time.frame_number(),
+            &**pool,
+            strategy,
+        )
     }
 
     fn window_management(&mut self, (mut window_messages, mut screen_dimensions): WindowData) {
@@ -144,6 +154,7 @@ type AssetLoadingData<'a> = (
     Option<Read<'a, HotReloadStrategy>>,
     Write<'a, AssetStorage<Mesh>>,
     Write<'a, AssetStorage<Texture>>,
+    Write<'a, AssetStorage<Program>>,
 );
 
 type WindowData<'a> = (Write<'a, WindowMessages>, WriteExpect<'a, ScreenDimensions>);

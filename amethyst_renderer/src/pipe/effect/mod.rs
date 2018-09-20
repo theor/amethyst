@@ -19,6 +19,7 @@ use pipe::Target;
 use std::mem;
 use types::{Encoder, Factory, PipelineState, Resources, Slice};
 use vertex::Attributes;
+use super::super::Renderer;
 
 mod pso;
 
@@ -41,47 +42,58 @@ pub enum ProgramType {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct Program {
+pub struct Program {
     program_type: ProgramType,
+    data: Box<Vec<u8>>,
 }
 
-type ProgramHandle = Handle<Program>;
+pub type ProgramData = Box<Vec<u8>>;
+impl Program {
+    pub fn new(data: ProgramData) -> Self {
+        Program{ program_type: ProgramType::VertexShader, data }
+    }
+}
+
+pub type ProgramHandle = Handle<Program>;
+
 
 impl Asset for Program {
     const NAME: &'static str = "renderer::Program";
-    type Data = Box<[u8]>;
+    type Data = ProgramData;
     type HandleStorage = DenseVecStorage<ProgramHandle>;
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum ProgramSource<'a> {
+    SimpleHandle(ProgramHandle, ProgramHandle),
     Simple(&'a [u8], &'a [u8]),
     Geometry(&'a [u8], &'a [u8], &'a [u8]),
     Tessellated(&'a [u8], &'a [u8], &'a [u8], &'a [u8]),
 }
 
 impl<'a> ProgramSource<'a> {
-    pub fn compile(&self, fac: &mut Factory) -> Result<ShaderSet<Resources>> {
+    pub fn compile(&self, renderer: &mut Renderer) -> Result<ShaderSet<Resources>> {
         use gfx::traits::FactoryExt;
         use gfx::Factory;
 
         match *self {
-            ProgramSource::Simple(ref vs, ref ps) => fac
+            ProgramSource::SimpleHandle(ref vs, ref ps) => panic!("asdasd"),//renderer.create_program
+            ProgramSource::Simple(ref vs, ref ps) => renderer.factory
                 .create_shader_set(vs, ps)
                 .map_err(|e| Error::ProgramCreation(e)),
             ProgramSource::Geometry(ref vs, ref gs, ref ps) => {
-                let v = fac
+                let v = renderer.factory
                     .create_shader_vertex(vs)
                     .map_err(|e| ProgramError::Vertex(e))?;
-                let g = fac
+                let g = renderer.factory
                     .create_shader_geometry(gs)
                     .expect("Geometry shader creation failed");
-                let p = fac
+                let p = renderer.factory
                     .create_shader_pixel(ps)
                     .map_err(|e| ProgramError::Pixel(e))?;
                 Ok(ShaderSet::Geometry(v, g, p))
             }
-            ProgramSource::Tessellated(ref vs, ref hs, ref ds, ref ps) => fac
+            ProgramSource::Tessellated(ref vs, ref hs, ref ds, ref ps) => renderer.factory
                 .create_shader_set_tessellation(vs, hs, ds, ps)
                 .map_err(|e| Error::ProgramCreation(e)),
         }
@@ -163,15 +175,15 @@ impl Effect {
 }
 
 pub struct NewEffect<'f> {
-    pub factory: &'f mut Factory,
+    pub renderer: &'f mut Renderer,
     out: &'f Target,
     multisampling: u16,
 }
 
 impl<'f> NewEffect<'f> {
-    pub(crate) fn new(fac: &'f mut Factory, out: &'f Target, multisampling: u16) -> Self {
+    pub(crate) fn new(renderer: &'f mut Renderer, out: &'f Target, multisampling: u16) -> Self {
         NewEffect {
-            factory: fac,
+            renderer,
             out,
             multisampling,
         }
@@ -179,22 +191,22 @@ impl<'f> NewEffect<'f> {
 
     pub fn simple<S: Into<&'f [u8]>>(self, vs: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Simple(vs.into(), ps.into());
-        EffectBuilder::new(self.factory, self.out, self.multisampling, src)
+        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
     }
 
     pub fn geom<S: Into<&'f [u8]>>(self, vs: S, gs: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Geometry(vs.into(), gs.into(), ps.into());
-        EffectBuilder::new(self.factory, self.out, self.multisampling, src)
+        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
     }
 
     pub fn tess<S: Into<&'f [u8]>>(self, vs: S, hs: S, ds: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Tessellated(vs.into(), hs.into(), ds.into(), ps.into());
-        EffectBuilder::new(self.factory, self.out, self.multisampling, src)
+        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
     }
 }
 
 pub struct EffectBuilder<'a> {
-    factory: &'a mut Factory,
+    renderer: &'a mut Renderer,
     out: &'a Target,
     init: Init<'a>,
     prim: Primitive,
@@ -205,7 +217,7 @@ pub struct EffectBuilder<'a> {
 
 impl<'a> EffectBuilder<'a> {
     pub(crate) fn new(
-        fac: &'a mut Factory,
+        renderer: &'a mut Renderer,
         out: &'a Target,
         multisampling: u16,
         src: ProgramSource<'a>,
@@ -215,7 +227,7 @@ impl<'a> EffectBuilder<'a> {
             rast.samples = Some(MultiSample);
         }
         EffectBuilder {
-            factory: fac,
+            renderer,
             out: out,
             init: Init::default(),
             prim: Primitive::TriangleList,
@@ -348,9 +360,9 @@ impl<'a> EffectBuilder<'a> {
 
         debug!("Building effect");
         debug!("Compiling shaders");
-        let ref mut fac = self.factory;
-        let prog = self.prog.compile(fac)?;
+        let prog = self.prog.compile(self.renderer)?;
         debug!("Creating pipeline state");
+        let ref mut fac = self.renderer.factory;
         let pso = fac.create_pipeline_state(&prog, self.prim, self.rast, self.init.clone())?;
 
         let mut data = Data::default();

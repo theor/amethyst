@@ -87,8 +87,8 @@ pub use cam::{ActiveCamera, ActiveCameraPrefab, Camera, CameraPrefab, Projection
 pub use color::Rgba;
 pub use config::DisplayConfig;
 pub use formats::{
-    build_mesh_with_combo, create_mesh_asset, create_texture_asset, BmpFormat, ComboMeshCreator,
-    GraphicsPrefab, ImageData, JpgFormat, MaterialPrefab, MeshCreator, MeshData, ObjFormat,
+    build_mesh_with_combo, create_mesh_asset, create_shader_asset, create_texture_asset, BmpFormat, ComboMeshCreator,
+    GlslProgram, GraphicsPrefab, ImageData, JpgFormat, MaterialPrefab, MeshCreator, MeshData, ObjFormat,
     PngFormat, TextureData, TextureFormat, TextureMetadata, TexturePrefab, TgaFormat,
 };
 pub use input::{ElementState, Event, KeyboardInput, MouseButton, VirtualKeyCode, WindowEvent};
@@ -102,7 +102,7 @@ pub use pass::{
 pub use pipe::{
     ColorBuffer, Data, DepthBuffer, DepthMode, Effect, EffectBuilder, Init, Meta, NewEffect,
     Pipeline, PipelineBuild, PipelineBuilder, PipelineData, PolyPipeline, PolyStage, PolyStages,
-    Stage, StageBuilder, Target, TargetBuilder, Targets,
+    Program, ProgramData, ProgramHandle, Stage, StageBuilder, Target, TargetBuilder, Targets,
 };
 pub use renderer::Renderer;
 pub use resources::{AmbientColor, ScreenDimensions, WindowMessages};
