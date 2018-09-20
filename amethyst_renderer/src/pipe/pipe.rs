@@ -223,18 +223,19 @@ where
 {
     type Pipeline = Pipeline<R>;
     fn build(mut self, renderer: &mut Renderer) -> Result<Pipeline<R>> {
+        let multisampling = renderer.multisampling;
         let mut targets = self
             .targets
             .drain(..)
-            .map(|tb| tb.build(&mut renderer.factory, renderer.out.size()))
+            .map(|tb| tb.build(&mut renderer.factory, renderer.main_target.size()))
             .collect::<Result<Targets>>()?;
 
-        targets.insert("".into(), out.clone());
+        targets.insert("".into(), renderer.main_target.clone());
 
         let stages = self
             .stages
             .into_list()
-            .fmap(BuildStage::new(renderer, &targets, renderer.multisampling))
+            .fmap(BuildStage::new(renderer, &targets, multisampling))
             .try()?;
 
         Ok(Pipeline { stages, targets })

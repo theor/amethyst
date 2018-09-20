@@ -17,10 +17,12 @@ pub struct Renderer {
 
     device: Device,
     encoder: Encoder,
-    main_target: Target,
+    /// TODO
+    pub main_target: Target,
     window: Window,
     events: EventsLoop,
-    multisampling: u16,
+    /// TODO
+    pub multisampling: u16,
     cached_size: LogicalSize,
 }
 

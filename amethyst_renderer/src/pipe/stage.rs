@@ -259,8 +259,7 @@ impl<Q> StageBuilder<Q> {
 
 impl<'a, Q> StageBuilder<Queue<Q>> {
     /// Appends another `Pass` to the stage.
-    pub fn with_pass<P: Pass>(self, pass: P,
-    renderer: & mut Renderer,) -> StageBuilder<Queue<(Queue<Q>, P)>> {
+    pub fn with_pass<P: Pass>(self, pass: P) -> StageBuilder<Queue<(Queue<Q>, P)>> {
         StageBuilder {
             clear_color: self.clear_color,
             clear_depth: self.clear_depth,

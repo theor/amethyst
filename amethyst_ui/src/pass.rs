@@ -136,7 +136,7 @@ impl Pass for DrawUi {
                 tex_coord: [0., 1.],
             },
         ];
-        self.mesh = Some(Mesh::build(data).build(&mut effect.factory)?);
+        self.mesh = Some(Mesh::build(data).build(&mut effect.renderer.factory)?);
         use std::mem;
         effect
             .simple(VERT_SRC, FRAG_SRC)
