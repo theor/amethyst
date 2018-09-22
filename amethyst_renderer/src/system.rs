@@ -104,7 +104,7 @@ where
         if self.pipe.is_none() {
             use std::clone::Clone;
 
-            match self.renderer.create_pipe(&self.builder, &loader) {
+            match self.renderer.create_pipe(&self.builder, &loader, &shader_storage) {
                 Ok(pipe) => { self.pipe = Some(pipe) },
                 Err(err) => {
                     error!("Failed creating pipeline: {}", err);

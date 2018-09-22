@@ -47,7 +47,7 @@ pub enum ProgramType {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Program {
     program_type: ProgramType,
-    data: Box<Vec<u8>>,
+    pub data: Box<Vec<u8>>,
 }
 
 pub type ProgramData = Box<Vec<u8>>;
@@ -75,13 +75,15 @@ pub enum ProgramSource<'a> {
 }
 
 impl<'a> ProgramSource<'a> {
-    pub fn compile(&self, renderer: &mut Renderer) -> Result<ShaderSet<Resources>> {
+    pub fn compile(&self, renderer: &mut Renderer, storage: &AssetStorage<Program>) -> Result<ShaderSet<Resources>> {
         use gfx::traits::FactoryExt;
         use gfx::Factory;
 
         match *self {
-            ProgramSource::SimpleHandle(vs, ps) => {
-                renderer.create_program(vs, ps)
+            ProgramSource::SimpleHandle(ref vs, ref ps) => {
+                let vsp = storage.get(vs).ok_or(Error::NoSuchTarget("vertex shader retrieval failed".to_string()))?;
+                let psp = storage.get(ps).ok_or(Error::NoSuchTarget("pixel shader retrieval failed".to_string()))?;
+                renderer.create_program(vsp, psp)
             },
             ProgramSource::Simple(ref vs, ref ps) => renderer.factory
                 .create_shader_set(vs, ps)
@@ -184,41 +186,44 @@ pub struct NewEffect<'f> {
     out: &'f Target,
     multisampling: u16,
     pub loader: &'f Loader,
+    pub storage: &'f AssetStorage<Program>,
 }
 
 impl<'f> NewEffect<'f> {
-    pub(crate) fn new(renderer: &'f mut Renderer, out: &'f Target, multisampling: u16, loader: &'f Loader) -> Self {
+    pub(crate) fn new(renderer: &'f mut Renderer, out: &'f Target, multisampling: u16, loader: &'f Loader, storage: &'f AssetStorage<Program>) -> Self {
         NewEffect {
             renderer,
             out,
             multisampling,
             loader,
+            storage,
         }
     }
 
     pub fn simple_handles(self, vs: ProgramHandle, ps: ProgramHandle) -> EffectBuilder<'f> {
         let src = ProgramSource::SimpleHandle(vs, ps);
-        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
+        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
     }
 
     pub fn simple<S: Into<&'f [u8]>>(self, vs: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Simple(vs.into(), ps.into());
-        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
+        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
     }
 
     pub fn geom<S: Into<&'f [u8]>>(self, vs: S, gs: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Geometry(vs.into(), gs.into(), ps.into());
-        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
+        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
     }
 
     pub fn tess<S: Into<&'f [u8]>>(self, vs: S, hs: S, ds: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Tessellated(vs.into(), hs.into(), ds.into(), ps.into());
-        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
+        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
     }
 }
 
 pub struct EffectBuilder<'a> {
     renderer: &'a mut Renderer,
+    storage: &'a AssetStorage<Program>,
     out: &'a Target,
     init: Init<'a>,
     prim: Primitive,
@@ -230,6 +235,7 @@ pub struct EffectBuilder<'a> {
 impl<'a> EffectBuilder<'a> {
     pub(crate) fn new(
         renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
         out: &'a Target,
         multisampling: u16,
         src: ProgramSource<'a>,
@@ -240,6 +246,7 @@ impl<'a> EffectBuilder<'a> {
         }
         EffectBuilder {
             renderer,
+            storage,
             out: out,
             init: Init::default(),
             prim: Primitive::TriangleList,
@@ -372,7 +379,7 @@ impl<'a> EffectBuilder<'a> {
 
         debug!("Building effect");
         debug!("Compiling shaders");
-        let prog = self.prog.compile(self.renderer)?;
+        let prog = self.prog.compile(self.renderer, self.storage)?;
         debug!("Creating pipeline state");
         let ref mut fac = self.renderer.factory;
         let pso = fac.create_pipeline_state(&prog, self.prim, self.rast, self.init.clone())?;

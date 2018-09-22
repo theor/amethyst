@@ -1,12 +1,12 @@
 //! A stage in the rendering pipeline.
 
 use amethyst_core::specs::prelude::SystemData;
-use amethyst_assets::Loader;
+use amethyst_assets::{Loader, AssetStorage};
 use error::{Error, Result};
 use fnv::FnvHashMap as HashMap;
 use hetseq::*;
 use pipe::pass::{CompiledPass, Pass, PassData};
-use pipe::{Target, Targets};
+use pipe::{Target, Targets, Program};
 use types::{Encoder, Factory};
 use super::super::Renderer;
 
@@ -230,6 +230,7 @@ impl<Q> StageBuilder<Q> {
         targets: &'a Targets,
         multisampling: u16,
         loader: &'a Loader,
+        storage: &'a AssetStorage<Program>
     ) -> Result<Stage<R>>
     where
         Q: IntoList<List = L>,
@@ -245,7 +246,7 @@ impl<Q> StageBuilder<Q> {
         let passes = self
             .passes
             .into_list()
-            .fmap(CompilePass::new(renderer, &out, multisampling, loader))
+            .fmap(CompilePass::new(renderer, &out, multisampling, loader, storage))
             .try()?;
 
         Ok(Stage {
@@ -277,16 +278,18 @@ pub struct CompilePass<'a> {
     target: &'a Target,
     multisampling: u16,
     loader: &'a Loader,
+    storage: &'a AssetStorage<Program>
 }
 
 impl<'a> CompilePass<'a> {
-    fn new(renderer: &'a mut Renderer, target: &'a Target, multisampling: u16, loader: &'a Loader
+    fn new(renderer: &'a mut Renderer, target: &'a Target, multisampling: u16, loader: &'a Loader, storage: &'a AssetStorage<Program>
         ) -> Self {
         CompilePass {
             renderer,
             target,
             multisampling,
             loader,
+            storage,
         }
     }
 }
@@ -297,7 +300,7 @@ where
 {
     type Output = Result<CompiledPass<P>>;
     fn call_once(self, (pass,): (P,)) -> Result<CompiledPass<P>> {
-        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling, self.loader)
+        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling, self.loader, self.storage)
     }
 }
 impl<'a, P> HetFnMut<(P,)> for CompilePass<'a>
@@ -305,6 +308,6 @@ where
     P: Pass,
 {
     fn call_mut(&mut self, (pass,): (P,)) -> Result<CompiledPass<P>> {
-        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling, self.loader)
+        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling, self.loader, self.storage)
     }
 }

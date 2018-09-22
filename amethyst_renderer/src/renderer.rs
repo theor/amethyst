@@ -11,7 +11,7 @@ use tex::{Texture, TextureBuilder};
 use types::{ColorFormat, DepthFormat, Device, Encoder, Factory, Resources, Window};
 use winit::{dpi::LogicalSize, EventsLoop, Window as WinitWindow, WindowBuilder};
 use pipe::Program;
-use amethyst_assets::Loader;
+use amethyst_assets::{Loader,AssetStorage};
 
 /// Generic renderer.
 pub struct Renderer {
@@ -46,10 +46,11 @@ impl Renderer {
     }
 
     /// Builds a new mesh from the given vertices.
-    pub fn create_program(&mut self, vs: ProgramHandle, ps: ProgramHandle) -> Result<ShaderSet<Resources>>
+    pub fn create_program(&mut self, vs: &Program, ps: &Program) -> Result<ShaderSet<Resources>>
     {
         use gfx::traits::FactoryExt;
-        self.factory.create_shader_set(b"",b"").map_err(|e| Error::ProgramCreation(e))
+        // TODO: use programs
+        self.factory.create_shader_set(&vs.data, &ps.data).map_err(|e| Error::ProgramCreation(e))
     }
 
     /// Builds a new mesh from the given vertices.
@@ -70,12 +71,12 @@ impl Renderer {
     }
 
     /// Builds a new renderer pipeline.
-    pub fn create_pipe<B, P>(&mut self, pb: &B,loader: &Loader) -> Result<P>
+    pub fn create_pipe<B, P>(&mut self, pb: &B,loader: &Loader, storage: &AssetStorage<Program>) -> Result<P>
     where
         P: PolyPipeline,
         B: PipelineBuild<Pipeline = P>,
     {
-        pb.build(self, loader)
+        pb.build(self, loader, storage)
     }
 
     /// Draws a scene with the given pipeline.

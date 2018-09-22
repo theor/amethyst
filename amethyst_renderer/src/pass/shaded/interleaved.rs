@@ -89,22 +89,21 @@ where
     V: Query<(Position, Normal, TexCoord)>,
 {
     fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
-        
-        let mut progress = ProgressCounter::new();
+        // unreachable!()
+        // let mut progress = ProgressCounter::new();
         let vs_handle = effect.loader.load(
             "shader/vertex.glsl",
             GlslProgram,
             (),
-            &mut progress,
-            &storage,
+            (),
+            effect.storage,
         );
-        let mut progress2 = ProgressCounter::new();
         let ps_handle = effect.loader.load(
-            "shader/vertex.glsl",
+            "shader/frag.glsl",
             GlslProgram,
             (),
-            &mut progress2,
-            &storage,
+            (),
+            effect.storage,
         );
         let mut builder = effect.simple_handles(vs_handle, ps_handle);
         builder.with_raw_vertex_buffer(V::QUERIED_ATTRIBUTES, V::size() as ElemStride, 0);
