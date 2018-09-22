@@ -28,8 +28,8 @@ use visibility::Visibility;
 /// # Type Parameters
 ///
 /// * `V`: `VertexFormat`
-#[derive(Derivative, Clone, Debug, PartialEq)]
-#[derivative(Default(bound = "V: Query<(Position, TexCoord)>, Self: Pass"))]
+#[derive(Derivative, Debug, PartialEq)]
+#[derivative(Default(bound = "V: Query<(Position, TexCoord)>, Self: Pass"), Clone(bound=""))]
 pub struct DrawFlat<V> {
     _pd: PhantomData<V>,
     transparency: Option<(ColorMask, Blend, Option<DepthMode>)>,

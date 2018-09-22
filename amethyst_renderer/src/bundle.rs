@@ -69,7 +69,7 @@ where
     }
 }
 
-impl<'a, 'b, 'c, B: PipelineBuild<Pipeline = P>, P: 'b + PolyPipeline> SystemBundle<'a, 'b>
+impl<'a, 'b, 'c, B: 'b + PipelineBuild<Pipeline = P>, P: 'b + PolyPipeline> SystemBundle<'a, 'b>
     for RenderBundle<'c, B, P>
 {
     fn build(self, builder: &mut DispatcherBuilder<'a, 'b>) -> Result<()> {

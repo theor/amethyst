@@ -27,8 +27,9 @@ use winit::{DeviceEvent, Event, WindowEvent};
 /// Rendering system.
 #[derive(Derivative)]
 #[derivative(Debug)]
-pub struct RenderSystem<P> {
-    pipe: P,
+pub struct RenderSystem<B, P> {
+    builder: B,
+    pipe: Option<P>,
     #[derivative(Debug = "ignore")]
     renderer: Renderer,
     cached_size: (u32, u32),
@@ -37,14 +38,13 @@ pub struct RenderSystem<P> {
     event_vec: Vec<Event>,
 }
 
-impl<P> RenderSystem<P>
+impl<B, P> RenderSystem<B, P>
 where
     P: PolyPipeline,
+    B: PipelineBuild<Pipeline = P>,
 {
     /// Build a new `RenderSystem` from the given pipeline builder and config
-    pub fn build<B>(pipe: B, config: Option<DisplayConfig>) -> Result<Self>
-    where
-        B: PipelineBuild<Pipeline = P>,
+    pub fn build(pipe: B, config: Option<DisplayConfig>) -> Result<Self>
     {
         let mut renderer = {
             let mut renderer = Renderer::build();
@@ -57,20 +57,15 @@ where
             renderer
         };
 
-        match renderer.create_pipe(pipe) {
-            Ok(pipe) => Ok(Self::new(pipe, renderer)),
-            Err(err) => {
-                error!("Failed creating pipeline: {}", err);
-                Err(err)
-            }
-        }
+       Ok(Self::new(pipe, renderer))
     }
 
     /// Create a new render system
-    pub fn new(pipe: P, renderer: Renderer) -> Self {
+    pub fn new(builder: B, renderer: Renderer) -> Self {
         let cached_size = renderer.window().get_inner_size().unwrap().into();
         Self {
-            pipe,
+            builder,
+            pipe: None,
             renderer,
             cached_size,
             event_vec: Vec::with_capacity(20),
@@ -104,7 +99,17 @@ where
             time.frame_number(),
             &**pool,
             strategy,
-        )
+        );
+
+        if self.pipe.is_none() {
+            use std::clone::Clone;
+            match self.renderer.create_pipe(&self.builder) {
+                Ok(pipe) => { self.pipe = Some(pipe) },
+                Err(err) => {
+                    error!("Failed creating pipeline: {}", err);
+                }
+            }
+        }
     }
 
     fn window_management(&mut self, (mut window_messages, mut screen_dimensions): WindowData) {
@@ -139,7 +144,11 @@ where
     }
 
     fn render(&mut self, (mut event_handler, data): RenderData<P>) {
-        self.renderer.draw(&mut self.pipe, data);
+        match self.pipe {
+            Some(ref mut pipe) => self.renderer.draw(pipe, data),
+            None => (),
+        }
+        
         let events = &mut self.event_vec;
         self.renderer.events_mut().poll_events(|new_event| {
             compress_events(events, new_event);
@@ -164,9 +173,10 @@ type RenderData<'a, P> = (
     <P as PipelineData<'a>>::Data,
 );
 
-impl<'a, P> RunNow<'a> for RenderSystem<P>
+impl<'a, B, P> RunNow<'a> for RenderSystem<B, P>
 where
     P: PolyPipeline,
+    B: PipelineBuild<Pipeline = P>,
 {
     fn run_now(&mut self, res: &'a Resources) {
         #[cfg(feature = "profiler")]

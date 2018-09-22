@@ -211,22 +211,23 @@ pub trait PipelineBuild {
     type Pipeline: PolyPipeline;
 
     /// Build pipeline
-    fn build(self, renderer: &mut Renderer) -> Result<Self::Pipeline>;
+    fn build(&self, renderer: &mut Renderer) -> Result<Self::Pipeline>;
 }
 
 impl<L, Z, R, Q> PipelineBuild for PipelineBuilder<Q>
 where
-    Q: IntoList<List = L>,
+    Q: Clone+IntoList<List = L>,
     L: for<'a> Functor<BuildStage<'a>, Output = Z>,
     Z: Try<Error, Ok = R>,
     R: PolyStages,
 {
     type Pipeline = Pipeline<R>;
-    fn build(mut self, renderer: &mut Renderer) -> Result<Pipeline<R>> {
+    fn build(&self, renderer: &mut Renderer) -> Result<Pipeline<R>> {
+        use std::clone::Clone;
         let multisampling = renderer.multisampling;
         let mut targets = self
             .targets
-            .drain(..)
+            .iter()
             .map(|tb| tb.build(&mut renderer.factory, renderer.main_target.size()))
             .collect::<Result<Targets>>()?;
 
@@ -234,6 +235,7 @@ where
 
         let stages = self
             .stages
+            .clone()
             .into_list()
             .fmap(BuildStage::new(renderer, &targets, multisampling))
             .try()?;

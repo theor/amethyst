@@ -69,7 +69,7 @@ impl Renderer {
     }
 
     /// Builds a new renderer pipeline.
-    pub fn create_pipe<B, P>(&mut self, pb: B) -> Result<P>
+    pub fn create_pipe<B, P>(&mut self, pb: &B) -> Result<P>
     where
         P: PolyPipeline,
         B: PipelineBuild<Pipeline = P>,

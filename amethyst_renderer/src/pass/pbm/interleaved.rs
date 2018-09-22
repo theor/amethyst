@@ -30,8 +30,8 @@ use visibility::Visibility;
 /// # Type Parameters
 ///
 /// * `V`: `VertexFormat`
-#[derive(Derivative, Clone, Debug, PartialEq)]
-#[derivative(Default(bound = "V: Query<(Position, Normal, Tangent, TexCoord)>"))]
+#[derive(Derivative, Debug, PartialEq)]
+#[derivative(Default(bound = "V: Query<(Position, Normal, Tangent, TexCoord)>"), Clone(bound=""))]
 pub struct DrawPbm<V> {
     _pd: PhantomData<V>,
     transparency: Option<(ColorMask, Blend, Option<DepthMode>)>,

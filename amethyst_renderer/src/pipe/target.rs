@@ -158,7 +158,7 @@ impl TargetBuilder {
     }
 
     /// Builds and returns the new render target.
-    pub(crate) fn build(self, fac: &mut Factory, size: (u32, u32)) -> Result<(String, Target)> {
+    pub(crate) fn build(&self, fac: &mut Factory, size: (u32, u32)) -> Result<(String, Target)> {
         use gfx::Factory;
 
         let size = self.custom_size.unwrap_or(size);
@@ -193,6 +193,6 @@ impl TargetBuilder {
             size: size,
         };
 
-        Ok((self.name, target))
+        Ok((self.name.clone(), target))
     }
 }
