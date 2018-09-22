@@ -1,6 +1,7 @@
 use super::stage::*;
 use super::target::*;
 use amethyst_core::specs::prelude::SystemData;
+use amethyst_assets::Loader;
 // use color::Rgba;
 use error::{Error, Result};
 use fnv::FnvHashMap as HashMap;
@@ -211,7 +212,7 @@ pub trait PipelineBuild {
     type Pipeline: PolyPipeline;
 
     /// Build pipeline
-    fn build(&self, renderer: &mut Renderer) -> Result<Self::Pipeline>;
+    fn build(&self, renderer: &mut Renderer, loader: &Loader) -> Result<Self::Pipeline>;
 }
 
 impl<L, Z, R, Q> PipelineBuild for PipelineBuilder<Q>
@@ -222,7 +223,7 @@ where
     R: PolyStages,
 {
     type Pipeline = Pipeline<R>;
-    fn build(&self, renderer: &mut Renderer) -> Result<Pipeline<R>> {
+    fn build(&self, renderer: &mut Renderer, loader: &Loader) -> Result<Pipeline<R>> {
         use std::clone::Clone;
         let multisampling = renderer.multisampling;
         let mut targets = self
@@ -237,7 +238,7 @@ where
             .stages
             .clone()
             .into_list()
-            .fmap(BuildStage::new(renderer, &targets, multisampling))
+            .fmap(BuildStage::new(renderer, &targets, multisampling, loader))
             .try()?;
 
         Ok(Pipeline { stages, targets })
@@ -248,14 +249,16 @@ pub struct BuildStage<'a> {
     renderer: &'a mut Renderer,
     targets: &'a Targets,
     multisampling: u16,
+    loader: &'a Loader,
 }
 
 impl<'a, 'b> BuildStage<'a> {
-    fn new(renderer: &'a mut Renderer, targets: &'a Targets, multisampling: u16) -> Self {
+    fn new(renderer: &'a mut Renderer, targets: &'a Targets, multisampling: u16, loader: &'a Loader) -> Self {
         BuildStage {
             renderer,
             targets,
             multisampling,
+            loader,
         }
     }
 }
@@ -269,7 +272,7 @@ where
 {
     type Output = Result<Stage<R>>;
     fn call_once(self, (stage,): (StageBuilder<Q>,)) -> Result<Stage<R>> {
-        stage.build(self.renderer, self.targets, self.multisampling)
+        stage.build(self.renderer, self.targets, self.multisampling, self.loader)
     }
 }
 
@@ -281,6 +284,6 @@ where
     R: Passes,
 {
     fn call_mut(&mut self, (stage,): (StageBuilder<Q>,)) -> Result<Stage<R>> {
-        stage.build(self.renderer, self.targets, self.multisampling)
+        stage.build(self.renderer, self.targets, self.multisampling, self.loader)
     }
 }

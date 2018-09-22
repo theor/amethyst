@@ -3,8 +3,9 @@
 #![allow(missing_docs)]
 
 pub use self::pso::{Data, Init, Meta};
+use super::super::GlslProgram;
 
-use amethyst_assets::{AssetStorage, HotReloadStrategy};
+use amethyst_assets::{AssetStorage, HotReloadStrategy, Loader, ProgressCounter};
 use error::{Error, Result};
 use fnv::FnvHashMap as HashMap;
 use gfx::buffer::{Info as BufferInfo, Role as BufferRole};
@@ -67,7 +68,7 @@ impl Asset for Program {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ProgramSource<'a> {
-    SimpleHandle(&'a str, &'a str),
+    SimpleHandle(ProgramHandle, ProgramHandle),
     Simple(&'a [u8], &'a [u8]),
     Geometry(&'a [u8], &'a [u8], &'a [u8]),
     Tessellated(&'a [u8], &'a [u8], &'a [u8], &'a [u8]),
@@ -79,7 +80,7 @@ impl<'a> ProgramSource<'a> {
         use gfx::Factory;
 
         match *self {
-            ProgramSource::SimpleHandle(ref vs, ref ps) => {
+            ProgramSource::SimpleHandle(vs, ps) => {
                 renderer.create_program(vs, ps)
             },
             ProgramSource::Simple(ref vs, ref ps) => renderer.factory
@@ -182,18 +183,20 @@ pub struct NewEffect<'f> {
     pub renderer: &'f mut Renderer,
     out: &'f Target,
     multisampling: u16,
+    pub loader: &'f Loader,
 }
 
 impl<'f> NewEffect<'f> {
-    pub(crate) fn new(renderer: &'f mut Renderer, out: &'f Target, multisampling: u16) -> Self {
+    pub(crate) fn new(renderer: &'f mut Renderer, out: &'f Target, multisampling: u16, loader: &'f Loader) -> Self {
         NewEffect {
             renderer,
             out,
             multisampling,
+            loader,
         }
     }
 
-    pub fn simple_handles(self, vs: &'f str, ps: &'f str) -> EffectBuilder<'f> {
+    pub fn simple_handles(self, vs: ProgramHandle, ps: ProgramHandle) -> EffectBuilder<'f> {
         let src = ProgramSource::SimpleHandle(vs, ps);
         EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
     }

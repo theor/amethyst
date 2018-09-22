@@ -1,7 +1,7 @@
 //! Rendering system.
 //!
 
-use amethyst_assets::{AssetStorage, HotReloadStrategy};
+use amethyst_assets::{AssetStorage, HotReloadStrategy, Loader};
 use amethyst_core::shrev::EventChannel;
 use amethyst_core::specs::prelude::{
     Read, ReadExpect, Resources, RunNow, SystemData, Write, WriteExpect,
@@ -74,7 +74,7 @@ where
 
     fn asset_loading(
         &mut self,
-        (time, pool, strategy, mut mesh_storage, mut texture_storage, mut shader_storage): AssetLoadingData,
+        (time, pool, strategy, mut mesh_storage, mut texture_storage, mut shader_storage, loader): AssetLoadingData,
     ) {
         use std::ops::Deref;
 
@@ -103,7 +103,8 @@ where
 
         if self.pipe.is_none() {
             use std::clone::Clone;
-            match self.renderer.create_pipe(&self.builder) {
+
+            match self.renderer.create_pipe(&self.builder, &loader) {
                 Ok(pipe) => { self.pipe = Some(pipe) },
                 Err(err) => {
                     error!("Failed creating pipeline: {}", err);
@@ -164,6 +165,7 @@ type AssetLoadingData<'a> = (
     Write<'a, AssetStorage<Mesh>>,
     Write<'a, AssetStorage<Texture>>,
     Write<'a, AssetStorage<Program>>,
+    ReadExpect<'a, Loader>,
 );
 
 type WindowData<'a> = (Write<'a, WindowMessages>, WriteExpect<'a, ScreenDimensions>);

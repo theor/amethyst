@@ -1,11 +1,12 @@
 //! Simple shaded pass
 
 use super::*;
-use amethyst_assets::AssetStorage;
+use amethyst_assets::{AssetStorage, Loader, ProgressCounter};
 use amethyst_core::specs::prelude::{Join, Read, ReadExpect, ReadStorage};
 use amethyst_core::transform::GlobalTransform;
 use cam::{ActiveCamera, Camera};
 use error::Result;
+use formats::GlslProgram;
 use gfx::pso::buffer::ElemStride;
 use gfx_core::state::{Blend, ColorMask};
 use light::Light;
@@ -14,7 +15,7 @@ use mtl::{Material, MaterialDefaults};
 use pass::shaded_util::{set_light_args, setup_light_buffers};
 use pass::util::{draw_mesh, get_camera, setup_textures, setup_vertex_args};
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect, Program, ProgramSource};
+use pipe::{DepthMode, Effect, NewEffect, Program, ProgramHandle, ProgramSource};
 use resources::AmbientColor;
 use std::marker::PhantomData;
 use tex::Texture;
@@ -88,7 +89,24 @@ where
     V: Query<(Position, Normal, TexCoord)>,
 {
     fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
-        let mut builder = effect.simple_handles(VERT_SRC_PATH, FRAG_SRC_PATH);
+        
+        let mut progress = ProgressCounter::new();
+        let vs_handle = effect.loader.load(
+            "shader/vertex.glsl",
+            GlslProgram,
+            (),
+            &mut progress,
+            &storage,
+        );
+        let mut progress2 = ProgressCounter::new();
+        let ps_handle = effect.loader.load(
+            "shader/vertex.glsl",
+            GlslProgram,
+            (),
+            &mut progress2,
+            &storage,
+        );
+        let mut builder = effect.simple_handles(vs_handle, ps_handle);
         builder.with_raw_vertex_buffer(V::QUERIED_ATTRIBUTES, V::size() as ElemStride, 0);
         setup_vertex_args(&mut builder);
         setup_light_buffers(&mut builder);

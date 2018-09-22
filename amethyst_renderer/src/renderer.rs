@@ -5,12 +5,13 @@ use gfx::memory::Pod;
 use gfx::{ShaderSet};
 use mesh::{Mesh, MeshBuilder, VertexDataSet};
 use pipe::{
-    ColorBuffer, DepthBuffer, PipelineBuild, PipelineData, PolyPipeline, Target, TargetBuilder,
+    ColorBuffer, DepthBuffer, PipelineBuild, PipelineData, ProgramHandle, PolyPipeline, Target, TargetBuilder,
 };
 use tex::{Texture, TextureBuilder};
 use types::{ColorFormat, DepthFormat, Device, Encoder, Factory, Resources, Window};
 use winit::{dpi::LogicalSize, EventsLoop, Window as WinitWindow, WindowBuilder};
 use pipe::Program;
+use amethyst_assets::Loader;
 
 /// Generic renderer.
 pub struct Renderer {
@@ -45,7 +46,7 @@ impl Renderer {
     }
 
     /// Builds a new mesh from the given vertices.
-    pub fn create_program(&mut self, vs: &str, ps: &str) -> Result<ShaderSet<Resources>>
+    pub fn create_program(&mut self, vs: ProgramHandle, ps: ProgramHandle) -> Result<ShaderSet<Resources>>
     {
         use gfx::traits::FactoryExt;
         self.factory.create_shader_set(b"",b"").map_err(|e| Error::ProgramCreation(e))
@@ -69,12 +70,12 @@ impl Renderer {
     }
 
     /// Builds a new renderer pipeline.
-    pub fn create_pipe<B, P>(&mut self, pb: &B) -> Result<P>
+    pub fn create_pipe<B, P>(&mut self, pb: &B,loader: &Loader) -> Result<P>
     where
         P: PolyPipeline,
         B: PipelineBuild<Pipeline = P>,
     {
-        pb.build(self)
+        pb.build(self, loader)
     }
 
     /// Draws a scene with the given pipeline.

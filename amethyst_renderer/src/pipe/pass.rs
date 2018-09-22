@@ -1,6 +1,8 @@
 //! Types for constructing render passes.
 
 use amethyst_core::specs::prelude::SystemData;
+use amethyst_assets::Loader;
+
 use error::Result;
 use pipe::{Effect, NewEffect, Target};
 use types::{Encoder, Factory};
@@ -45,8 +47,9 @@ where
         renderer: &mut Renderer,
         out: &Target,
         multisampling: u16,
+        loader: &Loader,
     ) -> Result<Self> {
-        let effect = pass.compile(NewEffect::new(renderer, out, multisampling))?;
+        let effect = pass.compile(NewEffect::new(renderer, out, multisampling, loader))?;
         Ok(CompiledPass {
             effect,
             inner: pass,

@@ -1,6 +1,7 @@
 //! A stage in the rendering pipeline.
 
 use amethyst_core::specs::prelude::SystemData;
+use amethyst_assets::Loader;
 use error::{Error, Result};
 use fnv::FnvHashMap as HashMap;
 use hetseq::*;
@@ -228,6 +229,7 @@ impl<Q> StageBuilder<Q> {
         renderer: &'a mut Renderer,
         targets: &'a Targets,
         multisampling: u16,
+        loader: &'a Loader,
     ) -> Result<Stage<R>>
     where
         Q: IntoList<List = L>,
@@ -243,7 +245,7 @@ impl<Q> StageBuilder<Q> {
         let passes = self
             .passes
             .into_list()
-            .fmap(CompilePass::new(renderer, &out, multisampling))
+            .fmap(CompilePass::new(renderer, &out, multisampling, loader))
             .try()?;
 
         Ok(Stage {
@@ -274,15 +276,17 @@ pub struct CompilePass<'a> {
     renderer: &'a mut Renderer,
     target: &'a Target,
     multisampling: u16,
+    loader: &'a Loader,
 }
 
 impl<'a> CompilePass<'a> {
-    fn new(renderer: &'a mut Renderer, target: &'a Target, multisampling: u16, 
+    fn new(renderer: &'a mut Renderer, target: &'a Target, multisampling: u16, loader: &'a Loader
         ) -> Self {
         CompilePass {
             renderer,
             target,
             multisampling,
+            loader,
         }
     }
 }
@@ -293,7 +297,7 @@ where
 {
     type Output = Result<CompiledPass<P>>;
     fn call_once(self, (pass,): (P,)) -> Result<CompiledPass<P>> {
-        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling)
+        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling, self.loader)
     }
 }
 impl<'a, P> HetFnMut<(P,)> for CompilePass<'a>
@@ -301,6 +305,6 @@ where
     P: Pass,
 {
     fn call_mut(&mut self, (pass,): (P,)) -> Result<CompiledPass<P>> {
-        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling)
+        CompiledPass::compile(pass, self.renderer, self.target, self.multisampling, self.loader)
     }
 }
