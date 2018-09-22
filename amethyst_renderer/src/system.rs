@@ -13,7 +13,7 @@ use formats::{create_mesh_asset, create_shader_asset, create_texture_asset};
 use mesh::Mesh;
 use mtl::{Material, MaterialDefaults};
 use pipe::{PipelineBuild, PipelineData, PolyPipeline};
-use pipe::{Program, ProgramData};
+use pipe::{Program};//, ProgramData};
 use rayon::ThreadPool;
 use renderer::Renderer;
 use resources::{ScreenDimensions, WindowMessages};
@@ -22,7 +22,7 @@ use std::sync::Arc;
 use tex::Texture;
 use winit::{DeviceEvent, Event, WindowEvent};
 
-use amethyst_assets::ProcessingState;
+// use amethyst_assets::ProcessingState;
 
 /// Rendering system.
 #[derive(Derivative)]

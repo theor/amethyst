@@ -14,7 +14,7 @@ use mtl::{Material, MaterialDefaults};
 use pass::shaded_util::{set_light_args, setup_light_buffers};
 use pass::util::{draw_mesh, get_camera, setup_textures, setup_vertex_args};
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect};
+use pipe::{DepthMode, Effect, NewEffect, Program, ProgramSource};
 use resources::AmbientColor;
 use std::marker::PhantomData;
 use tex::Texture;
@@ -43,6 +43,11 @@ where
 {
     /// Create instance of `DrawShaded` pass
     pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// asd
+    pub fn new_with_program(p: ProgramSource) -> Self {
         Default::default()
     }
 
@@ -82,7 +87,7 @@ where
     V: Query<(Position, Normal, TexCoord)>,
 {
     fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
-        let mut builder = effect.simple(VERT_SRC, FRAG_SRC);
+        let mut builder = effect.simple_handles(VERT_SRC_PATH, FRAG_SRC_PATH);
         builder.with_raw_vertex_buffer(V::QUERIED_ATTRIBUTES, V::size() as ElemStride, 0);
         setup_vertex_args(&mut builder);
         setup_light_buffers(&mut builder);

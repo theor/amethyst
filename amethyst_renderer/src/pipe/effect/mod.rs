@@ -3,6 +3,8 @@
 #![allow(missing_docs)]
 
 pub use self::pso::{Data, Init, Meta};
+
+use amethyst_assets::{AssetStorage, HotReloadStrategy};
 use error::{Error, Result};
 use fnv::FnvHashMap as HashMap;
 use gfx::buffer::{Info as BufferInfo, Role as BufferRole};
@@ -64,8 +66,8 @@ impl Asset for Program {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum ProgramSource<'a> {
-    SimpleHandle(ProgramHandle, ProgramHandle),
+pub enum ProgramSource<'a> {
+    SimpleHandle(&'a str, &'a str),
     Simple(&'a [u8], &'a [u8]),
     Geometry(&'a [u8], &'a [u8], &'a [u8]),
     Tessellated(&'a [u8], &'a [u8], &'a [u8], &'a [u8]),
@@ -77,7 +79,9 @@ impl<'a> ProgramSource<'a> {
         use gfx::Factory;
 
         match *self {
-            ProgramSource::SimpleHandle(ref vs, ref ps) => panic!("asdasd"),//renderer.create_program
+            ProgramSource::SimpleHandle(ref vs, ref ps) => {
+                renderer.create_program(vs, ps)
+            },
             ProgramSource::Simple(ref vs, ref ps) => renderer.factory
                 .create_shader_set(vs, ps)
                 .map_err(|e| Error::ProgramCreation(e)),
@@ -187,6 +191,11 @@ impl<'f> NewEffect<'f> {
             out,
             multisampling,
         }
+    }
+
+    pub fn simple_handles(self, vs: &'f str, ps: &'f str) -> EffectBuilder<'f> {
+        let src = ProgramSource::SimpleHandle(vs, ps);
+        EffectBuilder::new(self.renderer, self.out, self.multisampling, src)
     }
 
     pub fn simple<S: Into<&'f [u8]>>(self, vs: S, ps: S) -> EffectBuilder<'f> {

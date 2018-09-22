@@ -2,13 +2,15 @@ use config::DisplayConfig;
 use error::{Error, Result};
 use fnv::FnvHashMap as HashMap;
 use gfx::memory::Pod;
+use gfx::{ShaderSet};
 use mesh::{Mesh, MeshBuilder, VertexDataSet};
 use pipe::{
     ColorBuffer, DepthBuffer, PipelineBuild, PipelineData, PolyPipeline, Target, TargetBuilder,
 };
 use tex::{Texture, TextureBuilder};
-use types::{ColorFormat, DepthFormat, Device, Encoder, Factory, Window};
+use types::{ColorFormat, DepthFormat, Device, Encoder, Factory, Resources, Window};
 use winit::{dpi::LogicalSize, EventsLoop, Window as WinitWindow, WindowBuilder};
+use pipe::Program;
 
 /// Generic renderer.
 pub struct Renderer {
@@ -40,6 +42,13 @@ impl Renderer {
     /// Creates a new `RendererBuilder`, equivalent to `RendererBuilder::new()`.
     pub fn build() -> RendererBuilder {
         Self::build_with_loop(EventsLoop::new())
+    }
+
+    /// Builds a new mesh from the given vertices.
+    pub fn create_program(&mut self, vs: &str, ps: &str) -> Result<ShaderSet<Resources>>
+    {
+        use gfx::traits::FactoryExt;
+        self.factory.create_shader_set(b"",b"").map_err(|e| Error::ProgramCreation(e))
     }
 
     /// Builds a new mesh from the given vertices.

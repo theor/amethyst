@@ -16,7 +16,7 @@
 //!     .expect("Could not build pipeline");
 //! ```
 
-pub use self::effect::{Data, DepthMode, Effect, EffectBuilder, Init, Meta, NewEffect, Program, ProgramHandle, ProgramData};
+pub use self::effect::{Data, DepthMode, Effect, EffectBuilder, Init, Meta, NewEffect, Program, ProgramHandle, ProgramData, ProgramSource};
 pub use self::pipe::{
     Pipeline, PipelineBuild, PipelineBuilder, PipelineData, PolyPipeline, PolyStages,
 };
