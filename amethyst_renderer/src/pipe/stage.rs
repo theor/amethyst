@@ -55,6 +55,12 @@ pub trait PassesData<'a> {
 }
 
 pub trait Passes: for<'a> PassesData<'a> {
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        data: <Self as PassesData<'b>>::Data,
+    );
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoder: &mut Encoder,
@@ -77,6 +83,15 @@ impl<HP> Passes for List<(CompiledPass<HP>, List<()>)>
 where
     HP: Pass,
 {
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        hd: <HP as PassData<'b>>::Data,
+    ) {
+        let List((ref mut hp, _)) = *self;
+        hp.reload(renderer, storage, hd);
+    }
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoder: &mut Encoder,
@@ -106,6 +121,16 @@ where
     HP: Pass,
     TP: Passes,
 {
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        (hd, td): <Self as PassesData<'b>>::Data,
+    ) {
+        let List((ref mut hp, ref mut tp)) = *self;
+        hp.reload(renderer, storage, hd);
+        tp.reload(renderer, storage, td);
+    }
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoder: &mut Encoder,
@@ -132,6 +157,13 @@ pub trait StageData<'a> {
 /// A stage in the rendering.  Contains multiple passes.
 pub trait PolyStage: for<'a> StageData<'a> {
     ///
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        data: <Self as StageData<'b>>::Data,
+    );
+    ///
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoder: &mut Encoder,
@@ -154,6 +186,14 @@ impl<L> PolyStage for Stage<L>
 where
     L: Passes + Length,
 {
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        data: <Self as StageData<'b>>::Data,
+    ) {
+        self.passes.reload(renderer, storage, data);
+    }
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoder: &mut Encoder,

@@ -59,6 +59,17 @@ where
 }
 
 impl<P> CompiledPass<P> {
+    /// Reload the inner pass
+    pub fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        data: <P as PassData<'b>>::Data,
+    ) where
+        P: Pass,
+    {
+        self.effect.reload(renderer, storage);
+    }
     /// Applies the inner pass.
     pub fn apply<'a, 'b: 'a>(
         &'a mut self,

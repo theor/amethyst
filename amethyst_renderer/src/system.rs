@@ -101,7 +101,8 @@ where
             strategy,
         );
 
-        if self.pipe.is_none() {
+        match self.pipe {
+            None => {
             use std::clone::Clone;
 
             match self.renderer.create_pipe(&self.builder, &loader, &shader_storage) {
@@ -110,6 +111,8 @@ where
                     error!("Failed creating pipeline: {}", err);
                 }
             }
+            },
+            Some(ref mut pipe) => (),
         }
     }
 
@@ -144,9 +147,20 @@ where
         }
     }
 
+    fn reload<'a>(&'a mut self, (mut storage, data): ReloadData<'a, P>) {
+        match self.pipe {
+            Some(ref mut pipe) => { 
+                self.renderer.reload(&storage, pipe, data);
+            },
+            None => (),
+        }
+    }
+
     fn render(&mut self, (mut event_handler, data): RenderData<P>) {
         match self.pipe {
-            Some(ref mut pipe) => self.renderer.draw(pipe, data),
+            Some(ref mut pipe) => { 
+                self.renderer.draw(pipe, data)
+            },
             None => (),
         }
         
@@ -170,6 +184,12 @@ type AssetLoadingData<'a> = (
 
 type WindowData<'a> = (Write<'a, WindowMessages>, WriteExpect<'a, ScreenDimensions>);
 
+type ReloadData<'a, P> = (
+    Write<'a, AssetStorage<Program>>,
+    <P as PipelineData<'a>>::Data,
+);
+
+
 type RenderData<'a, P> = (
     Write<'a, EventChannel<Event>>,
     <P as PipelineData<'a>>::Data,
@@ -185,6 +205,7 @@ where
         profile_scope!("render_system");
         self.asset_loading(AssetLoadingData::fetch(res));
         self.window_management(WindowData::fetch(res));
+        self.reload(ReloadData::<P>::fetch(res));
         self.render(RenderData::<P>::fetch(res));
     }
 

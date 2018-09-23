@@ -36,6 +36,7 @@ pub fn create_shader_asset(
     renderer: &mut Renderer,
 ) -> AResult<ProcessingState<Program>> {
     println!("process {}", data.len());
+    renderer.program_loaded();
     Ok(ProcessingState::Loaded(Program::new(data)))
 }
 

@@ -27,12 +27,30 @@ pub struct Renderer {
     /// TODO
     pub multisampling: u16,
     cached_size: LogicalSize,
+    dirty: bool,
 }
 
 impl Renderer {
     /// Creates a `Renderer` with default window settings.
     pub fn new() -> Result<Renderer> {
         Self::build().build()
+    }
+
+    /// TODO
+    pub fn program_loaded(&mut self) {
+        self.dirty = true;
+    }
+
+    /// TODO
+    pub fn reload<'a, P>(&'a mut self, storage: &'a AssetStorage<Program>, p: &'a mut P, data:  <P as PipelineData<'a>>::Data)
+        where P: PolyPipeline,
+        {
+        if !self.dirty {
+            return;
+        }
+
+        self.dirty = false;
+        p.reload(&mut self, storage, data);
     }
 
     /// Creates a new `RendererBuilder`, equivalent to `RendererBuilder::new()`.
@@ -235,6 +253,7 @@ impl RendererBuilder {
             events: self.events,
             multisampling: self.config.multisampling,
             cached_size,
+            dirty: false,
         })
     }
 }

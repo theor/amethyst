@@ -120,6 +120,28 @@ pub struct Effect {
 }
 
 impl Effect {
+    /// TODO
+    pub fn reload(&mut self, renderer: &mut Renderer, storage: &AssetStorage<Program>){
+        use gfx::traits::FactoryExt;
+
+        let ps = storage.get(&self.prog[0]);
+        let vs = storage.get(&self.prog[1]);
+
+        match (ps, vs) {
+            (Some(ps), Some(vs)) => {
+                self.pso = renderer.factory.create_shader_set(&vs.data, &ps.data).ok().and_then(|prog|{
+                    debug!("Creating pipeline state");
+                    let ref mut fac = renderer.factory;
+                    let prim = Primitive::TriangleList;
+                    let rast = Rasterizer::new_fill().with_cull_back();
+                    let init = Init::default();
+                    fac.create_pipeline_state(&prog, prim, rast, init).ok()
+                })
+            },
+            _ => (),
+        }
+    }
+
     pub fn update_global<N: AsRef<str>, T: ToUniform>(&mut self, name: N, data: T) {
         match self.globals.get(name.as_ref()) {
             Some(i) => self.data.globals[*i] = data.convert(),

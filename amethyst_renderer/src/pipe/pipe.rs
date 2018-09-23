@@ -40,6 +40,13 @@ pub trait StagesData<'a> {
 ///
 pub trait PolyStages: for<'a> StagesData<'a> {
     ///
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        data: <Self as StagesData<'b>>::Data,
+    );
+    ///
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoders: &mut Encoder,
@@ -62,6 +69,15 @@ impl<HS> PolyStages for List<(HS, List<()>)>
 where
     HS: PolyStage,
 {
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        hd: <HS as StageData<'b>>::Data,
+    ) {
+        let List((ref mut hs, _)) = *self;
+        hs.reload(renderer, storage, hd);
+    }
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoders: &mut Encoder,
@@ -91,6 +107,17 @@ where
     HS: PolyStage,
     TS: PolyStages,
 {
+    fn reload<'a, 'b: 'a>(
+        &'a mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        (hd, td): <Self as StagesData<'b>>::Data,
+    ) {
+        let List((ref mut hs, ref mut ts)) = *self;
+        hs.reload(renderer, storage, hd);
+        ts.reload(renderer, storage, td);
+
+    }
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoders: &mut Encoder,
@@ -117,6 +144,14 @@ pub trait PipelineData<'a> {
 
 /// Trait used for the pipeline.
 pub trait PolyPipeline: for<'a> PipelineData<'a> {
+    /// TODO
+    fn reload<'a>(
+        &mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        data: <Self as PipelineData<'a>>::Data,
+    );
+    
     /// Retuns `ParallelIterator` which apply data to all stages
     fn apply<'a, 'b: 'a>(
         &'a mut self,
@@ -143,6 +178,15 @@ impl<L> PolyPipeline for Pipeline<L>
 where
     L: PolyStages,
 {
+    fn reload<'a>(
+        &mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        data: <L as StagesData<'a>>::Data,
+    ) {
+        println!("RELOAD");
+        self.stages.reload(renderer, storage, data);
+    }
     fn apply<'a, 'b: 'a>(
         &'a mut self,
         encoders: &mut Encoder,
