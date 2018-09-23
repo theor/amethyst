@@ -75,12 +75,14 @@ pub enum ProgramSource<'a> {
 }
 
 impl<'a> ProgramSource<'a> {
-    pub fn compile(&self, renderer: &mut Renderer, storage: &AssetStorage<Program>) -> Result<ShaderSet<Resources>> {
+    pub fn compile(&self, renderer: &mut Renderer, storage: &AssetStorage<Program>, handles: &mut Vec<ProgramHandle>) -> Result<ShaderSet<Resources>> {
         use gfx::traits::FactoryExt;
         use gfx::Factory;
 
         match *self {
             ProgramSource::SimpleHandle(ref vs, ref ps) => {
+                handles.push(vs.clone());
+                handles.push(ps.clone());
                 let vsp = storage.get(vs).ok_or(Error::NoSuchTarget("vertex shader retrieval failed".to_string()))?;
                 let psp = storage.get(ps).ok_or(Error::NoSuchTarget("pixel shader retrieval failed".to_string()))?;
                 renderer.create_program(vsp, psp)
@@ -110,10 +112,11 @@ impl<'a> ProgramSource<'a> {
 #[derive(Derivative)]
 #[derivative(Clone, Debug, Eq, PartialEq)]
 pub struct Effect {
-    pub pso: PipelineState<Meta>,
+    pub pso: Option<PipelineState<Meta>>,
     pub data: Data,
     const_bufs: HashMap<String, usize>,
     globals: HashMap<String, usize>,
+    prog: Vec<ProgramHandle>,
 }
 
 impl Effect {
@@ -177,7 +180,10 @@ impl Effect {
     }
 
     pub fn draw(&mut self, slice: &Slice, enc: &mut Encoder) {
-        enc.draw(&slice, &self.pso, &self.data);
+        match self.pso {
+            None => (),
+            Some(ref pso) => enc.draw(&slice, pso, &self.data),
+        }
     }
 }
 
@@ -379,10 +385,17 @@ impl<'a> EffectBuilder<'a> {
 
         debug!("Building effect");
         debug!("Compiling shaders");
-        let prog = self.prog.compile(self.renderer, self.storage)?;
-        debug!("Creating pipeline state");
+        
+        let mut handles = Vec::new();
+        let pso = {
+            self.prog.compile(self.renderer, self.storage, &mut handles).and_then(|prog|{
+                debug!("Creating pipeline state");
+                let ref mut fac = self.renderer.factory;
+                fac.create_pipeline_state(&prog, self.prim, self.rast, self.init.clone()).map_err(Into::into)
+            }).ok()
+        };
+
         let ref mut fac = self.renderer.factory;
-        let pso = fac.create_pipeline_state(&prog, self.prim, self.rast, self.init.clone())?;
 
         let mut data = Data::default();
 
@@ -439,6 +452,7 @@ impl<'a> EffectBuilder<'a> {
             data,
             const_bufs,
             globals,
+            prog: handles,
         })
     }
 }
