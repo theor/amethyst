@@ -8,7 +8,7 @@ use amethyst_core::specs::prelude::{
 };
 use amethyst_renderer::error::Result;
 use amethyst_renderer::pipe::pass::{Pass, PassData};
-use amethyst_renderer::pipe::{Effect, NewEffect};
+use amethyst_renderer::pipe::{Effect, EffectBuilder, NewEffect};
 use amethyst_renderer::{
     Encoder, Factory, Mesh, PosTex, Resources, ScreenDimensions, Texture, TextureData,
     TextureHandle, TextureMetadata, VertexFormat,
@@ -113,7 +113,7 @@ impl<'a> PassData<'a> for DrawUi {
 //TODO: EVERYTHING
 
 impl Pass for DrawUi {
-    fn compile(&mut self, mut effect: NewEffect) -> Result<Effect> {
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a> {
         panic!("");
         // Initialize a single unit quad, we'll use this mesh when drawing quads later
         // let data = vec![
@@ -154,7 +154,6 @@ impl Pass for DrawUi {
         //     .with_raw_vertex_buffer(PosTex::ATTRIBUTES, PosTex::size() as ElemStride, 0)
         //     .with_texture("albedo")
         //     .with_blended_output("color", ColorMask::all(), blend::ALPHA, None)
-        //     .build()
     }
 
     fn apply<'a, 'b: 'a>(

@@ -121,22 +121,33 @@ pub struct Effect {
 
 impl Effect {
     /// TODO
-    pub fn reload(&mut self, renderer: &mut Renderer, storage: &AssetStorage<Program>){
+    pub fn program<'a>(&self) -> ProgramSource<'a> {
+        ProgramSource::SimpleHandle(self.prog[0].clone(), self.prog[1].clone())
+    }
+    /// TODO
+    pub fn reload<'a>(&mut self, renderer: &mut Renderer, storage: &AssetStorage<Program>, init: Init<'a>){
         use gfx::traits::FactoryExt;
 
-        let ps = storage.get(&self.prog[0]);
-        let vs = storage.get(&self.prog[1]);
+        let vs = storage.get(&self.prog[0]);
+        let ps = storage.get(&self.prog[1]);
 
         match (ps, vs) {
             (Some(ps), Some(vs)) => {
-                self.pso = renderer.factory.create_shader_set(&vs.data, &ps.data).ok().and_then(|prog|{
-                    debug!("Creating pipeline state");
-                    let ref mut fac = renderer.factory;
-                    let prim = Primitive::TriangleList;
-                    let rast = Rasterizer::new_fill().with_cull_back();
-                    let init = Init::default();
-                    fac.create_pipeline_state(&prog, prim, rast, init).ok()
-                })
+                let shader_set = renderer.factory.create_shader_set(&vs.data, &ps.data);
+                let pso = match shader_set {
+                    Ok(shader_set) => {
+                        debug!("Creating pipeline state");
+                        let ref mut fac = renderer.factory;
+                        let prim = Primitive::TriangleList;
+                        let rast = Rasterizer::new_fill().with_cull_back();
+                        match fac.create_pipeline_state(&shader_set, prim, rast, init) {
+                            Ok(p) => { debug!("PSO creation successful: {:?}", p); Some(p) },
+                            Err(e) => { error!("{}", e); None },
+                        }
+                    },
+                    Err(e) => { error!("{}", e); None },
+                };
+                self.pso = pso;
             },
             _ => (),
         }
@@ -210,19 +221,13 @@ impl Effect {
 }
 
 pub struct NewEffect<'f> {
-    pub renderer: &'f mut Renderer,
-    out: &'f Target,
-    multisampling: u16,
     pub loader: &'f Loader,
     pub storage: &'f AssetStorage<Program>,
 }
 
 impl<'f> NewEffect<'f> {
-    pub(crate) fn new(renderer: &'f mut Renderer, out: &'f Target, multisampling: u16, loader: &'f Loader, storage: &'f AssetStorage<Program>) -> Self {
+    pub(crate) fn new(loader: &'f Loader, storage: &'f AssetStorage<Program>) -> Self {
         NewEffect {
-            renderer,
-            out,
-            multisampling,
             loader,
             storage,
         }
@@ -230,52 +235,53 @@ impl<'f> NewEffect<'f> {
 
     pub fn simple_handles(self, vs: ProgramHandle, ps: ProgramHandle) -> EffectBuilder<'f> {
         let src = ProgramSource::SimpleHandle(vs, ps);
-        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
+        EffectBuilder::new(src)
     }
 
     pub fn simple<S: Into<&'f [u8]>>(self, vs: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Simple(vs.into(), ps.into());
-        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
+        EffectBuilder::new(src)
     }
 
     pub fn geom<S: Into<&'f [u8]>>(self, vs: S, gs: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Geometry(vs.into(), gs.into(), ps.into());
-        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
+        EffectBuilder::new(src)
     }
 
     pub fn tess<S: Into<&'f [u8]>>(self, vs: S, hs: S, ds: S, ps: S) -> EffectBuilder<'f> {
         let src = ProgramSource::Tessellated(vs.into(), hs.into(), ds.into(), ps.into());
-        EffectBuilder::new(self.renderer, self.storage, self.out, self.multisampling, src)
+        EffectBuilder::new(src)
     }
 }
 
 pub struct EffectBuilder<'a> {
-    renderer: &'a mut Renderer,
-    storage: &'a AssetStorage<Program>,
-    out: &'a Target,
-    init: Init<'a>,
-    prim: Primitive,
+    // renderer: &'a mut Renderer,
+    // storage: &'a AssetStorage<Program>,
+    // out: &'a Target,
     prog: ProgramSource<'a>,
+    /// TODO
+    pub init: Init<'a>,
+    prim: Primitive,
     rast: Rasterizer,
     const_bufs: Vec<BufferInfo>,
 }
 
 impl<'a> EffectBuilder<'a> {
     pub(crate) fn new(
-        renderer: &'a mut Renderer,
-        storage: &'a AssetStorage<Program>,
-        out: &'a Target,
-        multisampling: u16,
+        // renderer: &'a mut Renderer,
+        // storage: &'a AssetStorage<Program>,
+        // out: &'a Target,
+        // multisampling: u16,
         src: ProgramSource<'a>,
     ) -> Self {
         let mut rast = Rasterizer::new_fill().with_cull_back();
-        if multisampling > 0 {
-            rast.samples = Some(MultiSample);
-        }
+        // if multisampling > 0 {
+        //     rast.samples = Some(MultiSample);
+        // }
         EffectBuilder {
-            renderer,
-            storage,
-            out: out,
+            // renderer,
+            // storage,
+            // out: out,
             init: Init::default(),
             prim: Primitive::TriangleList,
             rast,
@@ -401,23 +407,33 @@ impl<'a> EffectBuilder<'a> {
     }
 
     /// TODO: Support render targets as inputs.
-    pub fn build(&mut self) -> Result<Effect> {
+    pub fn build(&mut self,
+        renderer: &'a mut Renderer,
+        storage: &'a AssetStorage<Program>,
+        out: &'a Target,
+        multisampling: u16,
+    ) -> Result<Effect> {
         use gfx::traits::FactoryExt;
         use gfx::Factory;
+
+        
+        if multisampling > 0 {
+            self.rast.samples = Some(MultiSample);
+        }
 
         debug!("Building effect");
         debug!("Compiling shaders");
         
         let mut handles = Vec::new();
         let pso = {
-            self.prog.compile(self.renderer, self.storage, &mut handles).and_then(|prog|{
+            self.prog.compile(renderer, storage, &mut handles).and_then(|prog|{
                 debug!("Creating pipeline state");
-                let ref mut fac = self.renderer.factory;
+                let ref mut fac = renderer.factory;
                 fac.create_pipeline_state(&prog, self.prim, self.rast, self.init.clone()).map_err(Into::into)
             }).ok()
         };
 
-        let ref mut fac = self.renderer.factory;
+        let ref mut fac = renderer.factory;
 
         let mut data = Data::default();
 
@@ -450,21 +466,20 @@ impl<'a> EffectBuilder<'a> {
 
         debug!("Process Color/Depth/Blend outputs");
         data.out_colors.extend(
-            self.out
+            out
                 .color_bufs()
                 .iter()
                 .map(|cb| &cb.as_output)
                 .cloned(),
         );
         data.out_blends.extend(
-            self.out
+            out
                 .color_bufs()
                 .iter()
                 .map(|cb| &cb.as_output)
                 .cloned(),
         );
-        data.out_depth = self
-            .out
+        data.out_depth = out
             .depth_buf()
             .map(|db| (db.as_output.clone(), (0, 0)));
 

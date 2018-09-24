@@ -114,6 +114,9 @@ where
             },
             Some(ref mut pipe) => (),
         }
+
+        
+        self.reload(&shader_storage);
     }
 
     fn window_management(&mut self, (mut window_messages, mut screen_dimensions): WindowData) {
@@ -147,10 +150,10 @@ where
         }
     }
 
-    fn reload<'a>(&'a mut self, (mut storage, data): ReloadData<'a, P>) {
+    fn reload<'a>(&'a mut self, storage: &'a AssetStorage<Program>) {
         match self.pipe {
             Some(ref mut pipe) => { 
-                self.renderer.reload(&storage, pipe, data);
+                self.renderer.reload(&storage, pipe);
             },
             None => (),
         }
@@ -184,11 +187,6 @@ type AssetLoadingData<'a> = (
 
 type WindowData<'a> = (Write<'a, WindowMessages>, WriteExpect<'a, ScreenDimensions>);
 
-type ReloadData<'a, P> = (
-    Write<'a, AssetStorage<Program>>,
-    <P as PipelineData<'a>>::Data,
-);
-
 
 type RenderData<'a, P> = (
     Write<'a, EventChannel<Event>>,
@@ -205,7 +203,6 @@ where
         profile_scope!("render_system");
         self.asset_loading(AssetLoadingData::fetch(res));
         self.window_management(WindowData::fetch(res));
-        self.reload(ReloadData::<P>::fetch(res));
         self.render(RenderData::<P>::fetch(res));
     }
 

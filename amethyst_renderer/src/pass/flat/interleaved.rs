@@ -13,7 +13,7 @@ use mesh::{Mesh, MeshHandle};
 use mtl::{Material, MaterialDefaults};
 use pass::util::{draw_mesh, get_camera, setup_textures, VertexArgs};
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect};
+use pipe::{DepthMode, Effect, EffectBuilder, NewEffect};
 use std::marker::PhantomData;
 use tex::Texture;
 use types::{Encoder, Factory};
@@ -78,7 +78,7 @@ impl<V> Pass for DrawFlat<V>
 where
     V: Query<(Position, TexCoord)>,
 {
-    fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a> {
         use std::mem;
         let mut builder = effect.simple(VERT_SRC, FRAG_SRC);
         builder
@@ -93,7 +93,7 @@ where
             Some((mask, blend, depth)) => builder.with_blended_output("color", mask, blend, depth),
             None => builder.with_output("color", Some(DepthMode::LessEqualWrite)),
         };
-        builder.build()
+        builder
     }
 
     fn apply<'a, 'b: 'a>(

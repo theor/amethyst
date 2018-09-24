@@ -15,7 +15,7 @@ use pass::shaded_util::{set_light_args, setup_light_buffers};
 use pass::skinning::{create_skinning_effect, setup_skinning_buffers};
 use pass::util::{draw_mesh, get_camera, setup_textures, setup_vertex_args};
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect};
+use pipe::{DepthMode, Effect, EffectBuilder, NewEffect};
 use resources::AmbientColor;
 use skinning::JointTransforms;
 use tex::Texture;
@@ -82,7 +82,7 @@ impl<'a> PassData<'a> for DrawShadedSeparate {
 }
 
 impl Pass for DrawShadedSeparate {
-    fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a> {
         debug!("Building shaded pass");
         let mut builder = if self.skinning {
             create_skinning_effect(effect, FRAG_SRC)
@@ -116,7 +116,7 @@ impl Pass for DrawShadedSeparate {
             Some((mask, blend, depth)) => builder.with_blended_output("color", mask, blend, depth),
             None => builder.with_output("color", Some(DepthMode::LessEqualWrite)),
         };
-        builder.build()
+        builder
     }
 
     fn apply<'a, 'b: 'a>(

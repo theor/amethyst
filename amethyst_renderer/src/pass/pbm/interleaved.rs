@@ -14,7 +14,7 @@ use mtl::{Material, MaterialDefaults};
 use pass::shaded_util::{set_light_args, setup_light_buffers};
 use pass::util::{draw_mesh, get_camera, setup_textures, setup_vertex_args};
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect};
+use pipe::{DepthMode, Effect, EffectBuilder, NewEffect};
 use resources::AmbientColor;
 use std::marker::PhantomData;
 use tex::Texture;
@@ -81,7 +81,7 @@ impl<V> Pass for DrawPbm<V>
 where
     V: Query<(Position, Normal, Tangent, TexCoord)>,
 {
-    fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a> {
         let mut builder = effect.simple(VERT_SRC, FRAG_SRC);
         builder.with_raw_vertex_buffer(V::QUERIED_ATTRIBUTES, V::size() as ElemStride, 0);
         setup_vertex_args(&mut builder);
@@ -91,7 +91,7 @@ where
             Some((mask, blend, depth)) => builder.with_blended_output("color", mask, blend, depth),
             None => builder.with_output("color", Some(DepthMode::LessEqualWrite)),
         };
-        builder.build()
+        builder
     }
 
     fn apply<'a, 'b: 'a>(

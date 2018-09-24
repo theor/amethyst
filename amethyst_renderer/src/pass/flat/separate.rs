@@ -14,7 +14,7 @@ use mtl::{Material, MaterialDefaults};
 use pass::skinning::{create_skinning_effect, setup_skinning_buffers};
 use pass::util::{draw_mesh, get_camera, setup_textures, VertexArgs};
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect};
+use pipe::{DepthMode, Effect, EffectBuilder, NewEffect};
 use skinning::JointTransforms;
 use tex::Texture;
 use types::{Encoder, Factory};
@@ -85,7 +85,7 @@ impl<'a> PassData<'a> for DrawFlatSeparate {
 }
 
 impl Pass for DrawFlatSeparate {
-    fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a> {
         use std::mem;
         let mut builder = if self.skinning {
             create_skinning_effect(effect, FRAG_SRC)
@@ -116,7 +116,7 @@ impl Pass for DrawFlatSeparate {
             Some((mask, blend, depth)) => builder.with_blended_output("color", mask, blend, depth),
             None => builder.with_output("color", Some(DepthMode::LessEqualWrite)),
         };
-        builder.build()
+        builder
     }
 
     fn apply<'a, 'b: 'a>(

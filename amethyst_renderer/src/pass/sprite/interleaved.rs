@@ -15,7 +15,7 @@ use gfx::pso::buffer::ElemStride;
 use mtl::MaterialTextureSet;
 use pass::util::{add_texture, get_camera, set_view_args, setup_textures, ViewArgs};
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect};
+use pipe::{DepthMode, Effect, EffectBuilder, NewEffect};
 use sprite::{SpriteRender, SpriteSheet};
 use sprite_visibility::SpriteVisibility;
 use tex::Texture;
@@ -69,7 +69,7 @@ impl<'a> PassData<'a> for DrawSprite {
 }
 
 impl Pass for DrawSprite {
-    fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a> {
         use std::mem;
 
         let mut builder = effect.simple(VERT_SRC, FRAG_SRC);
@@ -86,7 +86,7 @@ impl Pass for DrawSprite {
             Some((mask, blend, depth)) => builder.with_blended_output("color", mask, blend, depth),
             None => builder.with_output("color", Some(DepthMode::LessEqualWrite)),
         };
-        builder.build()
+        builder
     }
 
     fn apply<'a, 'b: 'a>(

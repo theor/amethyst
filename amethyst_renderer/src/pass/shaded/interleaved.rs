@@ -14,8 +14,9 @@ use mesh::{Mesh, MeshHandle};
 use mtl::{Material, MaterialDefaults};
 use pass::shaded_util::{set_light_args, setup_light_buffers};
 use pass::util::{draw_mesh, get_camera, setup_textures, setup_vertex_args};
+use pipe::Init;
 use pipe::pass::{Pass, PassData};
-use pipe::{DepthMode, Effect, NewEffect, Program, ProgramHandle, ProgramSource};
+use pipe::{DepthMode, Effect, EffectBuilder, NewEffect, Program, ProgramHandle, ProgramSource};
 use resources::AmbientColor;
 use std::marker::PhantomData;
 use tex::Texture;
@@ -88,7 +89,18 @@ impl<V> Pass for DrawShaded<V>
 where
     V: Query<(Position, Normal, TexCoord)>,
 {
-    fn compile(&mut self, effect: NewEffect) -> Result<Effect> {
+    fn get_init<'a>(&self, mut builder: EffectBuilder<'a>) -> Option<Init<'a>> {
+        builder.with_raw_vertex_buffer(V::QUERIED_ATTRIBUTES, V::size() as ElemStride, 0);
+        setup_vertex_args(&mut builder);
+        setup_light_buffers(&mut builder);
+        setup_textures(&mut builder, &TEXTURES);
+        match self.transparency {
+            Some((mask, blend, depth)) => builder.with_blended_output("color", mask, blend, depth),
+            None => builder.with_output("color", Some(DepthMode::LessEqualWrite)),
+        };
+        Some(builder.init.clone())
+    }
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a> {
         // unreachable!()
         // let mut progress = ProgressCounter::new();
         let vs_handle = effect.loader.load(
@@ -114,7 +126,7 @@ where
             Some((mask, blend, depth)) => builder.with_blended_output("color", mask, blend, depth),
             None => builder.with_output("color", Some(DepthMode::LessEqualWrite)),
         };
-        builder.build()
+        builder
     }
 
     fn apply<'a, 'b: 'a>(

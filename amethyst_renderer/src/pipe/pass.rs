@@ -4,7 +4,7 @@ use amethyst_core::specs::prelude::SystemData;
 use amethyst_assets::{AssetStorage, Loader};
 
 use error::Result;
-use pipe::{Effect, NewEffect, Program, Target};
+use pipe::{Effect, NewEffect, Program, Target, Init, EffectBuilder};
 use types::{Encoder, Factory};
 use super::super::Renderer;
 
@@ -16,9 +16,13 @@ pub trait PassData<'a> {
 
 /// Structures implementing this provide a renderer pass.
 pub trait Pass: Clone + for<'a> PassData<'a> {
+    /// TODO Init
+    fn get_init<'a>(&self, builder: EffectBuilder<'a>) -> Option<Init<'a>> {
+        None
+    }
     /// The pass is given an opportunity to compile shaders and store them in an `Effect`
     /// which is then passed to the pass in `apply`.
-    fn compile(&mut self, effect: NewEffect) -> Result<Effect>;
+    fn compile<'a>(&mut self, effect: NewEffect<'a>) -> EffectBuilder<'a>;
     /// Called whenever the renderer is ready to apply the pass.  Feed commands into the
     /// encoder here.
     fn apply<'a, 'b: 'a>(
@@ -50,7 +54,8 @@ where
         loader: &Loader,
         storage: &AssetStorage<Program>,
     ) -> Result<Self> {
-        let effect = pass.compile(NewEffect::new(renderer, out, multisampling, loader, storage))?;
+        let mut effect = pass.compile(NewEffect::new(loader, storage));
+        let effect = effect.build(renderer, storage, out, multisampling)?;
         Ok(CompiledPass {
             effect,
             inner: pass,
@@ -64,11 +69,13 @@ impl<P> CompiledPass<P> {
         &'a mut self,
         renderer: &'a mut Renderer,
         storage: &'a AssetStorage<Program>,
-        data: <P as PassData<'b>>::Data,
     ) where
         P: Pass,
     {
-        self.effect.reload(renderer, storage);
+        // use pipe::ProgramSource;
+        // let p = ProgramSource::SimpleHandle(self.effect.prog[0], self.effect.prog[1]);
+        let i = self.inner.get_init(EffectBuilder::new(self.effect.program())).unwrap();
+        self.effect.reload(renderer, storage, i);
     }
     /// Applies the inner pass.
     pub fn apply<'a, 'b: 'a>(

@@ -42,7 +42,7 @@ impl Renderer {
     }
 
     /// TODO
-    pub fn reload<'a, P>(&'a mut self, storage: &'a AssetStorage<Program>, p: &'a mut P, data:  <P as PipelineData<'a>>::Data)
+    pub fn reload<'a,'b: 'a, P>(&'a mut self, storage: &'a AssetStorage<Program>, p: &'a mut P)
         where P: PolyPipeline,
         {
         if !self.dirty {
@@ -50,7 +50,7 @@ impl Renderer {
         }
 
         self.dirty = false;
-        p.reload(&mut self, storage, data);
+        p.reload(self, storage);
     }
 
     /// Creates a new `RendererBuilder`, equivalent to `RendererBuilder::new()`.
